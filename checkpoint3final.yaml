@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Kati Checkpoint3
+
+Parameters:
+  KatiName:
+    Type: String
+    Default: 'Kati Heikkonen'
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
+Resources:
+  KatinSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for EC2
+      GroupName: Kati-Instance-SG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  KatinInstanssi:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.nano
+      SecurityGroupIds:
+        - !Ref KatinSecurityGroup
+      Tags:
+        - Key: Owner
+          Value: Kati
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - "\n"
+            - - "#!/bin/bash"
+              - "Sudo su"
+              - "yum update -y"
+              - "yum install -y httpd.x86_64"
+              - "systemctl start httpd.service"
+              - "systemctl enable httpd.service"
+              - "echo 'Hello World' > /var/www/html/index.html"
+
+  KatinBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: kati-checkpoint3-bucket
+      Tags:
+        - Key: Owner
+          Value: !Ref KatiName
+
+  KatinParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: !GetAtt KatinBucket.Arn
+
+Outputs:
+  KatinInstanssiPublicDNSName:
+    Description: The Public DNS name of KatinInstanssi
+    Value: !GetAtt KatinInstanssi.PublicDnsName
